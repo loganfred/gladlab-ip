@@ -25,14 +25,13 @@ class Image(ND2Reader):
         self.iter_axes = axis
         self.default_coords['c'] = channel
 
-        self.compress(scale)
+        # note that pipelines don't modify the image metadata themselves
+        self.thumbnails = self.compress(scale) if scale > 1 else None
+
 
     def compress(self, scale, func=np.max):
-        if scale > 1:
-            log.info(f'compressing to thumbnails at 1/{scale} for speed')
-            resample(self, scale, func=func)
-        else:
-            log.info(f'loading without compression')
+        log.info(f'compressing to thumbnails at 1/{scale} for speed')
+        return resample(self, scale, func=func)
 
     def mean(self):
 
@@ -46,11 +45,12 @@ class Image(ND2Reader):
         return m
 
 
-    def maxprojection(self, thumbnails=True):
-        log.info('making max projection')
+    def maxprojection(self):
+        log.info(f'making max projection of shape {self[0].shape}')
 
-        maxProj = np.zeros(self[0].shape)
-        for frame in self:
+        data = self.thumbnails if self.thumbnails else self
+        maxProj = np.zeros(data[0].shape)
+        for frame in data:
             maxProj = np.maximum(maxProj, frame, out=maxProj)
         return maxProj
 
