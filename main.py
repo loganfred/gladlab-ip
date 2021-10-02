@@ -4,13 +4,17 @@ import os
 import glob
 import jinja2
 import logging
+import base64
 from io import BytesIO
 from PIL import Image as PImage
 from aiohttp import web
 import aiohttp_jinja2 as aj
+import pprint
 
 from image import Image
 from logs import log
+
+prettyprint = pprint.PrettyPrinter().pprint
 
 log.setLevel(logging.INFO)
 
@@ -26,34 +30,52 @@ names = [os.path.basename(f) for f in files]
 async def start(request):
 
     listing = zip(names, files)
-    return {'text': 'hello world',
-            'listing': listing}
+    return {'listing': listing}
 
-@routes.get('/page')
-@aj.template('page.jinja2')
-async def page(request):
+@routes.get('/debug')
+@aj.template('debug.jinja2')
+async def debug(request):
 
     listing = zip(names, files)
     return {'text': 'hello world',
             'listing': listing}
 
-@routes.post('/img')
+@routes.post('/api/img')
 async def image(request):
     data = await request.post()
 
     f = data.get('file')
     c = int(data.get('channel', 0))
-    s = int(data.get('scale', 1))
+    s = int(data.get('size'))  # check None case here
 
-    with Image(f, channel=c, scale=s) as zstack:
+    with Image(f, channel=c, size=s) as zstack:
+
+        # copy so that changes can be made for non-serializable objects
+        metadata = dict(zstack.metadata)
+
+        if metadata.get('date'):
+            metadata['date'] = metadata['date'].strftime('%m%d%Y, %H:%M:%S')
+
+        metadata.pop('z_levels')
+        metadata.update({'sizes': zstack.sizes})
+
+        prettyprint(metadata)
 
         img = PImage.fromarray(zstack.maxprojection()).convert('L')
+        width, height = img.size
+        res = f'{width}x{height}'
 
         with BytesIO() as buffer:
             img.save(buffer, format='png')
 
-            return web.Response(body=buffer.getvalue(),
-                                content_type='image/png')
+            enc = base64.b64encode(buffer.getvalue())
+            res = { 'file': os.path.basename(f),
+                    'resolution': res,
+                    'channel': c,
+                    'size': s,
+                    'meta': metadata,
+                    'image': enc.decode('utf-8')}
+            return web.json_response(res)
 
 
 app = web.Application()

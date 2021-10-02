@@ -13,23 +13,31 @@ def resample(frame, factor, **kwargs):
 
 class Image(ND2Reader):
 
-    def __init__(self, file, axis='z', channel=0, scale=1):
+    def __init__(self, file, axis='z', channel=0, size=None):
 
         super().__init__(file)
+
+        assert self.sizes['x'] == self.sizes['y'], 'image breaks assumption of 1:1 aspect ratio'
 
         log.info('initializing image class')
         log.info(f'channel is {channel}')
         log.info(f'axis is {axis}')
-        log.info(f'using scale = {scale}')
+        log.info(f'using size = {size}')
 
         self.iter_axes = axis
         self.default_coords['c'] = channel
 
         # note that pipelines don't modify the image metadata themselves
-        self.thumbnails = self.compress(scale) if scale > 1 else None
+        if size is not None:
+            self.thumbnails = self.compress(size)
+        else:
+            self.thumbnails = None
 
 
-    def compress(self, scale, func=np.max):
+    def compress(self, size, func=np.max):
+
+        log.info(f'requested size is {size}')
+        scale = self.sizes['x'] // size
         log.info(f'compressing to thumbnails at 1/{scale} for speed')
         return resample(self, scale, func=func)
 

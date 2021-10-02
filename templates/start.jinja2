@@ -1,24 +1,135 @@
 <html>
 <head>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.4.0/fabric.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+<link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css?family=Press Start 2P" rel="stylesheet">
+<style>
+    body { font-family: "Press Start 2P"; font-size 18px; }
+    form { font-size 12px; }
+    img { margin: auto; display: block;}
+    header { padding-top: 10px; padding-bottom: 10px; text-align: center;}
+    hr {height: 6px; background-color: black;}
+    .main { margin: 5%; }
+    .row { display: flex; align-items: center; justify-content: center; }
+    .col { margin-left: 5%; }
+</style>
 </head>
 <body>
-<p>{{ text }}</p>
-<form action="/img" method="post">
+<header>
+<h2> Hyphae Picker version 0</h2>
+</header>
+<hr>
 
+<div class="nes-container with-title main">
 
-  {% for name, value in listing %}
-      <label>
-      <input type="radio" name="file" value="{{value}}">
-      {{name}}
-      </label>
-      <br>
-  {% endfor %}
+    <p class="title" id="prop_name"> choose a file </p>
+    <p> Use the form below to view an image. </p>
 
-  <label for="channel">channel:</label>
-  <input type="number" id="channel" name="channel" value="0"><br>
-  <label for="scale">scale:</label>
-  <input type="number" id="scale" name="scale" value="10"><br>
-  <input type="submit" value="Submit">
-</form>
+    <div class="row">
+
+        <div class="nes-container with-title col">
+            <p class="title">Picker</p>
+            <canvas id="viewer" width="512" height="512"></canvas>
+        </div>
+
+        <div class="nes-container with-title col">
+            <p class="title">Folder</p>
+
+            <form id="imageform" action="/api/img">
+              {% for name, value in listing %}
+                  <label>
+                  <input type="radio" name="file" value="{{value}}">
+                  {{name}}
+                  </label>
+                  <br>
+              {% endfor %}
+
+              <label for="channel">channel:</label>
+              <input type="number" id="channel" name="channel" value="0"><br>
+              <label for="size">size:</label>
+              <input type="number" id="size" name="size" value="512"><br>
+              <input type="submit" value="Update">
+            </form>
+            <button type="button" class="nes-btn" id="btn-next">Prev</button>
+            <button type="button" class="nes-btn" id="btn-next">Next</button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="nes-table-responsive">
+      <table class="nes-table is-bordered is-centered" id="table">
+        <thead>
+          <tr>
+            <th>key</th>
+            <th>value</th>
+          </tr>
+        </thead>
+      </table>
+    </div>
+</div>
 </body>
+<script>
+
+function makeRow(data, table, prefix) {
+  $.each(data, function (key, val) {
+
+      prefix = (typeof prefix === 'undefined') ? '' : prefix;
+
+      if (key == 'image') {
+          return; // equivalent of continue in $.each()
+      }
+      if (typeof val == 'object') {
+        makeRow(val, table, `${prefix}${key}>`);
+        return;
+      }
+      let chunk = '';
+      chunk += '<tr>';
+      chunk += '<td>' + prefix + key + '</td>';
+      chunk += '<td>' + val + '</td>';
+      chunk += '</tr>';
+      table.append(chunk);
+  });
+}
+
+$("#imageform").submit(function(e) {
+    e.preventDefault();
+    var form = $(this);
+    var url = form.attr('action');
+
+    $.ajax({
+        type: "POST",
+        url: url,
+        data: form.serialize(),
+        success: function(data)
+        {
+            $("#prop_name").text(data.file)
+            makeRow(data, $('#table'));
+
+            let canvas = $("#viewer");
+            let ctx = canvas[0].getContext('2d');
+            let img = new Image();
+            img.src = 'data:image/png;base64,' + data.image;
+            img.onload = () => { makeLasso(img); }
+
+        }
+    });
+});
+
+function makeLasso(img) {
+    let canv = new fabric.Canvas('viewer', {isDrawingMode: true});
+    let imgInstance = new fabric.Image(img, {left: 0, top: 0,});
+
+    canv.add(imgInstance);
+    canv.freeDrawingBrush.color = 'yellow';
+    canv.freeDrawingBrush.width = 4;
+
+    canv.on('path:created', function(options) {
+        let path = options.path;
+        console.log(path);
+    });
+}
+
+</script>
 </html>
