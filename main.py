@@ -4,83 +4,53 @@ import os
 import glob
 import jinja2
 import logging
-import base64
-from io import BytesIO
-from PIL import Image as PImage
-from aiohttp import web
+import argparse
+import aiohttp
 import aiohttp_jinja2 as aj
-import pprint
 
-from image import Image
 from logs import log
+import webapp
 import qr
 
-prettyprint = pprint.PrettyPrinter().pprint
 log.setLevel(logging.INFO)
 
-LAN = True
-PORT = 8080
-HOST = '0.0.0.0' if LAN else 'localhost'
-QR = qr.create_url(PORT, scale=10)
 
-routes = web.RouteTableDef()
-folder = '/Users/loganf/source/gladfelter/FISH_wil'
-
-files = glob.glob(f'{folder}/*.nd2')
-files.sort()
-names = [os.path.basename(f) for f in files]
-
-@routes.get('/')
-@aj.template('start.jinja2')
-async def start(request):
-
-    listing = zip(names, files)
-    return {'listing': listing, 'qrcode': QR}
-
-@routes.post('/api/img')
-async def image(request):
-    data = await request.post()
-
-    f = data.get('file')
-    c = int(data.get('channel', 0))
-    s = int(data.get('size'))  # check None case here
-
-    with Image(f, channel=c, size=s) as zstack:
-
-        # copy so that changes can be made for non-serializable objects
-        metadata = dict(zstack.metadata)
-
-        if metadata.get('date'):
-            metadata['date'] = metadata['date'].strftime('%m%d%Y, %H:%M:%S')
-
-        metadata.pop('z_levels')
-        metadata.update({'sizes': zstack.sizes})
-
-        prettyprint(metadata)
-
-        img = PImage.fromarray(zstack.maxprojection()).convert('L')
-        width, height = img.size
-        res = f'{width}x{height}'
-
-        with BytesIO() as buffer:
-            img.save(buffer, format='png')
-
-            enc = base64.b64encode(buffer.getvalue())
-            res = { 'file': os.path.basename(f),
-                    'abspath': f,
-                    'resolution': res,
-                    'channel': c,
-                    'size': s,
-                    'meta': metadata,
-                    'image': enc.decode('utf-8')}
-            return web.json_response(res)
+def collectND2Files(folder):
+    files = glob.glob(os.path.join(folder, '*.nd2'))
+    files.sort()
+    names = [os.path.basename(f) for f in files]
+    return zip(names, files)
 
 
-routes.static('/static', 'static')
-app = web.Application()
-app.add_routes(routes)
-aj.setup(app, loader=jinja2.FileSystemLoader('templates'))
-web.run_app(app, path=HOST, port=PORT)
+def generateQRCode(port):
+    return qr.create_url(port, scale=10)
+
+
+def main(args):
+
+    QR = generateQRCode(args.port)
+    LISTING = collectND2Files(args.folder)
+    HOST = '0.0.0.0' if args.lan else 'localhost'
+    PORT = args.port
+
+    app = aiohttp.web.Application()
+    app['listing'] = LISTING
+    app['qrcode'] = QR
+    app.add_routes(webapp.routes)
+    aj.setup(app, loader=jinja2.FileSystemLoader('templates'))
+    aiohttp.web.run_app(app, path=HOST, port=PORT)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("folder", help="Folder with nd2 files")
+    parser.add_argument("-p", "--port", action="store", default=8080)
+    parser.add_argument("-t", "--tablet", action="store_true", dest="lan")
+
+    args = parser.parse_args()
+    main(args)
+
 
 
 '''
