@@ -10,13 +10,29 @@ from PIL import Image as PImage
 from aiohttp import web
 import aiohttp_jinja2 as aj
 import pprint
+import pyqrcode
 
 from image import Image
 from logs import log
 
 prettyprint = pprint.PrettyPrinter().pprint
 
+def getIPAddr():
+    # https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
+    import socket
+    return socket.gethostbyname(socket.gethostname())
+
+
 log.setLevel(logging.INFO)
+
+LAN = True
+PORT = 8080
+HOST = '0.0.0.0' if LAN else 'localhost'
+IP = getIPAddr()
+
+log.info(f'making QR code for ip addr "{IP}:{PORT}"')
+code = pyqrcode.create(f'http://{IP}:{PORT}').png_as_base64_str(scale=10)
+qr_code = f'data:image/png;base64, {code}'
 
 routes = web.RouteTableDef()
 folder = '/Users/loganf/source/gladfelter/FISH_wil'
@@ -30,15 +46,7 @@ names = [os.path.basename(f) for f in files]
 async def start(request):
 
     listing = zip(names, files)
-    return {'listing': listing}
-
-@routes.get('/debug')
-@aj.template('debug.jinja2')
-async def debug(request):
-
-    listing = zip(names, files)
-    return {'text': 'hello world',
-            'listing': listing}
+    return {'listing': listing, 'qrcode': qr_code}
 
 @routes.post('/api/img')
 async def image(request):
@@ -70,6 +78,7 @@ async def image(request):
 
             enc = base64.b64encode(buffer.getvalue())
             res = { 'file': os.path.basename(f),
+                    'abspath': f,
                     'resolution': res,
                     'channel': c,
                     'size': s,
@@ -78,10 +87,11 @@ async def image(request):
             return web.json_response(res)
 
 
+routes.static('/static', 'static')
 app = web.Application()
 app.add_routes(routes)
 aj.setup(app, loader=jinja2.FileSystemLoader('templates'))
-web.run_app(app)
+web.run_app(app, path=HOST, port=PORT)
 
 
 '''
