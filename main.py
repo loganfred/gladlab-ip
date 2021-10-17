@@ -10,29 +10,18 @@ from PIL import Image as PImage
 from aiohttp import web
 import aiohttp_jinja2 as aj
 import pprint
-import pyqrcode
 
 from image import Image
 from logs import log
+import qr
 
 prettyprint = pprint.PrettyPrinter().pprint
-
-def getIPAddr():
-    # https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
-    import socket
-    return socket.gethostbyname(socket.gethostname())
-
-
 log.setLevel(logging.INFO)
 
 LAN = True
 PORT = 8080
 HOST = '0.0.0.0' if LAN else 'localhost'
-IP = getIPAddr()
-
-log.info(f'making QR code for ip addr "{IP}:{PORT}"')
-code = pyqrcode.create(f'http://{IP}:{PORT}').png_as_base64_str(scale=10)
-qr_code = f'data:image/png;base64, {code}'
+QR = qr.create_url(PORT, scale=10)
 
 routes = web.RouteTableDef()
 folder = '/Users/loganf/source/gladfelter/FISH_wil'
@@ -46,7 +35,7 @@ names = [os.path.basename(f) for f in files]
 async def start(request):
 
     listing = zip(names, files)
-    return {'listing': listing, 'qrcode': qr_code}
+    return {'listing': listing, 'qrcode': QR}
 
 @routes.post('/api/img')
 async def image(request):
