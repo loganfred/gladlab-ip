@@ -9,47 +9,49 @@ import aiohttp
 import aiohttp_jinja2 as aj
 
 from logs import log
+import postprocess
 import webapp
-import qr
+import cache
 
 log.setLevel(logging.INFO)
 
 
-def collectND2Files(folder):
-    files = glob.glob(os.path.join(folder, '*.nd2'))
-    files.sort()
-    names = [os.path.basename(f) for f in files]
-    return zip(names, files)
+if __name__ == '__main__':
 
-
-def generateQRCode(port):
-    return qr.create_url(port, scale=10)
-
-
-def main(args):
-
-    QR = generateQRCode(args.port)
-    LISTING = collectND2Files(args.folder)
-    HOST = '0.0.0.0' if args.lan else 'localhost'
-    PORT = args.port
-
-    app = aiohttp.web.Application()
-    app['listing'] = LISTING
-    app['qrcode'] = QR
-    app.add_routes(webapp.routes)
-    aj.setup(app, loader=jinja2.FileSystemLoader('templates'))
-    aiohttp.web.run_app(app, path=HOST, port=PORT)
-
-
-if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='command')
 
-    parser.add_argument("folder", help="Folder with nd2 files")
-    parser.add_argument("-p", "--port", action="store", default=8080)
-    parser.add_argument("-t", "--tablet", action="store_true", dest="lan")
+    cache_parser = subparsers.add_parser('thumbs')
+    web_parser = subparsers.add_parser('draw')
+    compute_parser = subparsers.add_parser('postprocess')
+
+    cache_parser.add_argument('folder', help='Folder with nd2 files')
+    cache_parser.add_argument('-s', '--size', default=512)
+    cache_parser.add_argument('-c', '--channel', default=0)
+
+    web_parser.add_argument('folder', help='Folder with nd2 files')
+    web_parser.add_argument('-p', '--port', action='store', default=8080)
+    web_parser.add_argument('-t', '--tablet', action='store_true', dest='lan')
+
+    compute_parser.add_argument('folder', help='Folder with nd2 files')
 
     args = parser.parse_args()
-    main(args)
+
+    # go ahead and get the list of files and file names
+    files = glob.glob(os.path.join(args.folder, '*.nd2'))
+    files.sort()
+    names = [os.path.basename(f) for f in files]
+    listing = zip(names, files)
+
+    if args.command == 'thumbs':
+        cache.run(args, listing)
+    elif args.command == 'draw':
+        webapp.run(args, listing)
+    elif args.command == 'postprocess':
+        postprocess.run(args, listing)
+    else:
+        parser.print_usage()
+
 
 
 

@@ -1,5 +1,3 @@
-#! /usr/local/Caskroom/miniconda/base/envs/glad/bin/python
-
 import os
 import glob
 import jinja2
@@ -11,6 +9,8 @@ from aiohttp import web
 import aiohttp_jinja2 as aj
 import pprint
 
+import qr
+import cache
 from image import Image
 
 logging.getLogger(__name__)
@@ -33,30 +33,15 @@ async def image(request):
     c = int(data.get('channel', 0))
     s = int(data.get('size'))  # check None case here
 
-    with Image(f, channel=c, size=s) as zstack:
+    return web.json_response(cache.get(f, c, s))
 
-        # copy so that changes can be made for non-serializable objects
-        metadata = dict(zstack.metadata)
+def run(args, listing):
 
-        if metadata.get('date'):
-            metadata['date'] = metadata['date'].strftime('%m%d%Y, %H:%M:%S')
-
-        metadata.pop('z_levels')
-        metadata.update({'sizes': zstack.sizes})
-
-        img = PImage.fromarray(zstack.maxprojection()).convert('L')
-        width, height = img.size
-        res = f'{width}x{height}'
-
-        with BytesIO() as buffer:
-            img.save(buffer, format='png')
-
-            enc = base64.b64encode(buffer.getvalue())
-            res = { 'file': os.path.basename(f),
-                    'abspath': f,
-                    'resolution': res,
-                    'channel': c,
-                    'size': s,
-                    'meta': metadata,
-                    'image': enc.decode('utf-8')}
-            return web.json_response(res)
+    app = web.Application()
+    app['listing'] = listing
+    app['qrcode'] = qr.create_url(args.port, scale=10)
+    app.add_routes(routes)
+    aj.setup(app, loader=jinja2.FileSystemLoader('templates'))
+    web.run_app(app,
+                path='0.0.0.0' if args.lan else 'localhost',
+                port=args.port)
