@@ -22,6 +22,7 @@ function onHyphaePick(b64_hyphae, onPathClose) {
     hyphae.src = 'data:image/png;base64,' + b64_hyphae;
     hyphae.onload = () => {
         let imgInstance = new fabric.Image(hyphae)
+        canvas.clear();
         canvas.setBackgroundImage(imgInstance, canvas.renderAll.bind(canvas));
         onDrawStart();
         canvas.on('path:created', (d) => onPathClose(d));
@@ -84,6 +85,8 @@ $("#imageform").submit(function(e) {
         }
     });
 });
+
+
 
 // clear button should wipe the canvas, re-initialize the canvas, and clear out
 // any paths present in the serialization construct
