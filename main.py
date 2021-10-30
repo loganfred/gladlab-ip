@@ -2,18 +2,13 @@
 
 import os
 import glob
-import jinja2
 import logging
 import argparse
-import aiohttp
-import aiohttp_jinja2 as aj
 
 from logs import log
 import postprocess
 import webapp
 import cache
-
-log.setLevel(logging.INFO)
 
 
 if __name__ == '__main__':
@@ -27,92 +22,40 @@ if __name__ == '__main__':
 
     cache_parser.add_argument('folder', help='Folder with nd2 files')
     cache_parser.add_argument('-s', '--size', default=512)
-    cache_parser.add_argument('-c', '--channel', default=0)
+    cache_parser.add_argument('-c', '--channel', type=int, default=0)
+    cache_parser.add_argument('-f', '--force', action='store_true')
+    cache_parser.add_argument('-v', '--verbose', action='store_true')
 
     web_parser.add_argument('folder', help='Folder with nd2 files')
     web_parser.add_argument('-p', '--port', action='store', default=8080)
     web_parser.add_argument('-t', '--tablet', action='store_true', dest='lan')
+    web_parser.add_argument('-v', '--verbose', action='store_true')
 
-    compute_parser.add_argument('folder', help='Folder with nd2 files')
+    compute_parser.add_argument('file', help='JSON file of export data')
+    compute_parser.add_argument('-d', '--dest', default=None, help='output folder')
+    compute_parser.add_argument('-v', '--verbose', action='store_true')
 
     args = parser.parse_args()
 
-    # go ahead and get the list of files and file names
-    files = glob.glob(os.path.join(args.folder, '*.nd2'))
-    files.sort()
-    names = [os.path.basename(f) for f in files]
-    listing = zip(names, files)
+    if args.verbose:
+        log.setLevel(logging.INFO)
+    else:
+        log.setLevel(logging.WARNING)
+
+    if args.command in ['thumbs', 'draw']:
+        # go ahead and get the list of files and file names
+        files = glob.glob(os.path.join(args.folder, '*.nd2'))
+        files.sort()
+        names = [os.path.basename(f) for f in files]
+        listing = zip(names, files)
+    elif args.dest is None:
+        args.dest = os.path.basename(args.file)
 
     if args.command == 'thumbs':
         cache.run(args, listing)
     elif args.command == 'draw':
         webapp.run(args, listing)
     elif args.command == 'postprocess':
-        postprocess.run(args, listing)
+        postprocess.run(args)
     else:
         parser.print_usage()
-
-
-
-
-'''
-import numpy as np
-from matplotlib import pyplot as plt
-from skimage.draw import polygon2mask
-from skimage.io import imsave
-
-from image import Image
-import events
-from args import parser
-from logs import log
-
-
-@app.route('/')
-def start():
-
-    with Image(file) as zstack:
-
-        return render_template('start.html', zstack)
-
-def main(args):
-
-    fig, ax = plt.subplots(1)
-
-    with Image(args.FILE) as zstack:
-
-        proj = zstack.maxprojection()
-
-        img = ax.imshow(proj, cmap='gray')
-
-        lasso = events.LassoManager(ax)
-
-        plt.show()
-
-        for index, vertices in enumerate(lasso.vertices):
-
-            left = int(np.min(vertices[:, 0]))
-            right = int(np.max(vertices[:, 0]))
-            top = int(np.min(vertices[:, 1]))
-            bottom = int(np.max(vertices[:, 1]))
-
-            # transpose so (x, y) -> (rows, cols)
-            mask = polygon2mask(proj.shape, vertices).T
-            roi = (left, right, bottom, top)
-
-            hypha = zstack.punchMask(mask, roi, crop=True)
-            middle = hypha.shape[0] // 2
-
-            log.info(f'hypha {index} has shape {hypha.shape}'
-                     f' and dtype {hypha.dtype}')
-
-            log.info(f'saving as hypha_{index}.tiff')
-
-            imsave(f'hypha_{index}.tiff', hypha)
-
-
-if __name__ == '__main__':
-
-    args = parser.parse_args()
-    log.setLevel(args.loglevel)
-    main(args)
-'''

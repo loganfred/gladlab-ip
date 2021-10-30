@@ -14,14 +14,14 @@ canvas_dom.addEventListener("touchend",    function(event) {event.preventDefault
 canvas_dom.addEventListener("touchcancel", function(event) {event.preventDefault()});
 */
 
-var options = {}
+var options = {};
 var hyphae = new Image();
 var canvas = new fabric.Canvas('viewer', options);
 
 function onHyphaePick(b64_hyphae, onPathClose) {
     hyphae.src = 'data:image/png;base64,' + b64_hyphae;
     hyphae.onload = () => {
-        let imgInstance = new fabric.Image(hyphae)
+        let imgInstance = new fabric.Image(hyphae);
         canvas.clear();
         canvas.setBackgroundImage(imgInstance, canvas.renderAll.bind(canvas));
         onDrawStart();
@@ -39,9 +39,10 @@ function onDrawStart() {
 function onPathClose(options) {
 
     let path = options.path;
-    let obj = {path:path, ...PROPERTIES}
+    let vert = Path2Points(path.path, 10);
+    let obj = {path:path, vert:vert, ...PROPERTIES};
 
-    PATHS.push(obj)
+    PATHS.push(obj);
     console.log(obj);
     console.log(`PATHS array length is now ${PATHS.length}`);
 }
@@ -60,9 +61,9 @@ $("#imageform").submit(function(e) {
         success: function(data)
         {
             // append to metadata table
-            $("#prop_name").text(data.file)
+            $("#prop_name").text(data.file);
 
-            $('#table').empty()
+            $('#table').empty();
 
             let header = '';
             header += '<thead>'
@@ -73,7 +74,7 @@ $("#imageform").submit(function(e) {
             header += '</thead>'
 
             $('#table').append(header);
-            $('#metadata-title').show()
+            $('#metadata-title').show();
 
             makeRow(data, $('#table'));
 
@@ -81,7 +82,7 @@ $("#imageform").submit(function(e) {
             PROPERTIES = data;
 
             // execute the canvas updates
-            onHyphaePick(data.image, onPathClose)
+            onHyphaePick(data.image, onPathClose);
         }
     });
 });
@@ -92,7 +93,7 @@ $("#imageform").submit(function(e) {
 // any paths present in the serialization construct
 $('#clear').click( () => {
     canvas.clear();
-    let imgInstance = new fabric.Image(hyphae)
+    let imgInstance = new fabric.Image(hyphae);
     canvas.setBackgroundImage(imgInstance, canvas.renderAll.bind(canvas));
     PATHS = PATHS.filter( (o) => { return o.file !== PROPERTIES.file });
 });
@@ -114,6 +115,24 @@ function downloadObjectAsJson(exportObj, exportName){
 $('#export').click( () => {
     downloadObjectAsJson(PATHS, 'export');
 });
+
+
+// Path to Points
+// adapted from https://github.com/Shinao/PathToPoints
+
+function Path2Points(path, step) {
+
+    let data_points = [];
+
+    for (var c = 0; c < Raphael.getTotalLength(path); c += step) {
+        let point = Raphael.getPointAtLength(path, c);
+        data_points.push([point.x, point.y]);
+    }
+
+    console.log(data_points);
+    return data_points;
+}
+
 
 
 //------------------ MISC ---------------------

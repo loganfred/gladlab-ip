@@ -1,3 +1,4 @@
+import os
 import logging
 import numpy as np
 from pims import pipeline
@@ -8,37 +9,34 @@ log = logging.getLogger(__name__)
 
 @pipeline
 def resample(frame, factor, **kwargs):
-    log.info('using pipeline resample')
+    log.info('pipeline'
+             f' frame: {frame.shape}'
+             f' factor: {factor}')
     return block_reduce(frame, (factor, factor), **kwargs)
 
 class Image(ND2Reader):
 
-    def __init__(self, file, axis='z', channel=0, size=None):
+    def __init__(self, file, axis='z', framespec='yx', channel=0, size=None):
 
         super().__init__(file)
 
         assert self.sizes['x'] == self.sizes['y'], 'image breaks assumption of 1:1 aspect ratio'
 
-        log.info('initializing image class')
-        log.info(f'channel is {channel}')
-        log.info(f'axis is {axis}')
-        log.info(f'using size = {size}')
-
+        # specify which subset of the data we're iterating with (pims)
         self.iter_axes = axis
+        self.bundle_axes = framespec
         self.default_coords['c'] = channel
 
-        # note that pipelines don't modify the image metadata themselves
+        # add a separate thumbs attribute (note: lazy eval)
         if size is not None:
             self.thumbnails = self.compress(size)
         else:
             self.thumbnails = None
 
-
     def compress(self, size, func=np.max):
 
-        log.info(f'requested size is {size}')
         scale = self.sizes['x'] // size
-        log.info(f'compressing to thumbnails at 1/{scale} for speed')
+        log.info(f'compress size: {size} scale: 1/{scale}')
         return resample(self, scale, func=func)
 
     def mean(self):
@@ -54,9 +52,16 @@ class Image(ND2Reader):
 
 
     def maxprojection(self):
-        log.info(f'making max projection of shape {self[0].shape}')
+
 
         data = self.thumbnails if self.thumbnails else self
+        if self.thumbnails:
+            log.info(f'Using thumbnails for the max projection')
+        else:
+            log.info(f'Using full nd2 images for the max projection')
+
+        log.info(f'making max projection of shape {data[0].shape}')
+
         maxProj = np.zeros(data[0].shape)
         for frame in data:
             maxProj = np.maximum(maxProj, frame, out=maxProj)

@@ -7,27 +7,30 @@ from PIL import Image as PImage
 
 from image import Image
 
-logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def format_cache_file(file, channel, size):
-    return f'{file}_thumb_c{channel}_{size}x{size}.json'
+    f = os.path.splitext(file)[0].replace(' ','_')
+    return f'{f}_thumb_c{channel}_{size}x{size}.json'
 
 
-def get(file, channel, size):
+def get(file, channel, size, force=False):
 
     name = os.path.basename(file)
-    logging.info(f'working on {name} channel {channel} @ {size}x{size}')
-    f = os.path.splitext(file)[0]
-    cached = format_cache_file(f, channel, size)
-    logging.info(f'checking for "{cached}"')
+    log.info(f'working on "{file}"')
+    log.info(f'channel: {channel} size: {size}x{size}')
+    cached = format_cache_file(file, channel, size)
+    log.info(f'checking for "{cached}"')
 
-    if os.path.exists(cached):
-        logging.info('found it')
+    if force and os.path.exists(cached):
+        log.info('Path exists but is being overwritten due to --force')
+    elif os.path.exists(cached):
+        log.info('found it')
         with open(cached, 'r') as fin:
             return json.load(fin)
 
-    logging.info('creating it')
+    log.info(f'creating it with size {size}')
 
     with Image(file, channel=channel, size=size) as zstack:
 
@@ -41,16 +44,14 @@ def get(file, channel, size):
         metadata.update({'sizes': zstack.sizes})
 
         img = PImage.fromarray(zstack.maxprojection()).convert('L')
-        width, height = img.size
-        resolution = f'{width}x{height}'
 
         with BytesIO() as buffer:
             img.save(buffer, format='png')
 
             enc = base64.b64encode(buffer.getvalue())
-            res = {'file': os.path.basename(f),
-                   'abspath': f,
-                   'resolution': resolution,
+            res = {'file': os.path.basename(file),
+                   'abspath': os.path.abspath(file),
+                   'resolution': img.size,
                    'channel': channel,
                    'size': size,
                    'meta': metadata,
@@ -65,6 +66,6 @@ def run(args, listing):
 
     for name, file in listing:
         try:
-            _ = get(file, args.channel, args.size)
+            get(file, args.channel, args.size, force=args.force)
         except Exception as e:
-            logging.warn(f'! aborting {file} {e}')
+            log.warn(f'! aborting {file} {e}')
