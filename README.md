@@ -16,11 +16,11 @@ into more-accessible `*.TIFF` files.
 
 ## example usage
 
-![screenshots/example_use.png]
+![demo](screenshots/example_use.png)
 
 ## tablet mode
 
 The web interface shows a QR code so that the user can draw these ROIs on a
 tablet if they so choose.
 
-![screenshots/tablet_mode.png]
+![demo2](screenshots/tablet_mode.png)
