@@ -17,6 +17,7 @@ canvas_dom.addEventListener("touchcancel", function(event) {event.preventDefault
 var options = {};
 var hyphae = new Image();
 var canvas = new fabric.Canvas('viewer', options);
+canvas.on('path:created', (d) => onPathClose(d));
 
 function onHyphaePick(b64_hyphae, onPathClose) {
     hyphae.src = 'data:image/png;base64,' + b64_hyphae;
@@ -25,7 +26,6 @@ function onHyphaePick(b64_hyphae, onPathClose) {
         canvas.clear();
         canvas.setBackgroundImage(imgInstance, canvas.renderAll.bind(canvas));
         onDrawStart();
-        canvas.on('path:created', (d) => onPathClose(d));
     }
 }
 
