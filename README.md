@@ -14,7 +14,7 @@ each z-stack ahead-of-time. When ready, the user can launch a local web
 interface to manually lasso-select ROIs that are cropped, padded, and dumped
 into more-accessible `*.TIFF` files.
 
-## example usage
+## demo example
 
 ![demo](screenshots/example_use.png)
 
@@ -24,3 +24,7 @@ The web interface shows a QR code so that the user can draw these ROIs on a
 tablet if they so choose.
 
 ![demo2](screenshots/tablet_mode.png)
+
+## installation and usage
+
+Refer to the [gladlab-ip wiki](https://github.com/loganfred/gladlab-ip/wiki).
