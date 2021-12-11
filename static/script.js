@@ -26,8 +26,10 @@ function onHyphaePick(b64_hyphae, onPathClose) {
         canvas.clear();
         canvas.setBackgroundImage(imgInstance, canvas.renderAll.bind(canvas));
         onDrawStart();
+        let existing_paths = PATHS.filter( (o) => { return o.file == PROPERTIES.file });
+        existing_paths.forEach (element => { canvas.add(element.path) });
+        }
     }
-}
 
 function onDrawStart() {
     canvas.isDrawingMode = true;
