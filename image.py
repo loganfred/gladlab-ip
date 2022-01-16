@@ -14,6 +14,14 @@ def resample(frame, factor, **kwargs):
              f' factor: {factor}')
     return block_reduce(frame, (factor, factor), **kwargs)
 
+def return_channels(file):
+
+    with ND2Reader(file) as img:
+
+        channels = img.sizes['c']
+
+        return range(channels)
+
 class Image(ND2Reader):
 
     def __init__(self, file, axis='z', framespec='yx', channel=0, size=None):

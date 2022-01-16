@@ -6,6 +6,7 @@ from io import BytesIO
 from PIL import Image as PImage
 
 from image import Image
+from image import return_channels
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +14,6 @@ log = logging.getLogger(__name__)
 def format_cache_file(file, channel, size):
     f = os.path.splitext(file)[0].replace(' ','_')
     return f'{f}_thumb_c{channel}_{size}x{size}.json'
-
 
 def get(file, channel, size, force=False):
 
@@ -66,6 +66,12 @@ def run(args, listing):
 
     for name, file in listing:
         try:
-            get(file, args.channel, args.size, force=args.force)
+
+            if args.channel == -1:
+                for channel in return_channels(file):
+                    get(file, channel, args.size, force=args.force)
+            else:
+                get(file, args.channel, args.size, force=args.force)
+
         except Exception as e:
             log.warn(f'! aborting {file} {e}')
