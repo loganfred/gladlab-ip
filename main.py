@@ -1,5 +1,3 @@
-#! /usr/local/Caskroom/miniconda/base/envs/glad/bin/python
-
 import os
 import glob
 import logging
@@ -60,6 +58,11 @@ if __name__ == '__main__':
                                 help='Crop ROIs for all available channels '
                                      'regardless of which ones were used to '
                                      'select the max projection ')
+    compute_parser.add_argument('-c', '--channels', nargs='+', type=int,
+                                help='Crop ROIs for specific channels'
+                                     'regardless of which ones were used to '
+                                     'select the max projection ',
+                                default=None)
     compute_parser.add_argument('-v', '--verbose', action='store_true')
 
     args = parser.parse_args()

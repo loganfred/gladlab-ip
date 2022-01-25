@@ -24,8 +24,11 @@ def run(args):
         vertices = np.array(d.get('vert'))
         abspath = d.get('abspath')
 
+        # support some overrides to use the same ROIs on multiple channels
         if args.all_channels:
             channels = return_channels(abspath)
+        elif args.channels is not None:
+            channels = args.channels
         else:
             channels = [d.get('channel')]
 
