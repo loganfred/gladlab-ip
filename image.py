@@ -80,7 +80,7 @@ class Image(ND2Reader):
         log.info(f'crop is {crop}')
         log.info(f'bbox is {bbox}')
 
-        result = np.where(mask, self, self.mean())
+        result = np.where(mask, self, self.mean()).astype('uint16')
 
         if crop:
             l, r, t, b = bbox
